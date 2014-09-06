@@ -18,8 +18,8 @@
     var rand1 = 200;
 
     window.setInterval(function(){
-      rand0 = rand0 + Math.floor(Math.random() * (3 - -3)) - 1;
-      rand1 = rand1 + Math.floor(Math.random() * (3 - -3)) - 1;
+      rand0 = rand0 + Math.floor(Math.random() * (3 - -3)) - 3;
+      rand1 = rand1 + Math.floor(Math.random() * (3 - -3)) - 3;
       
       console.log(JSON.stringify({"probe0": rand0, "probe1": rand1}));
       ws.send(JSON.stringify({"probe0": rand0, "probe1": rand1}));
