@@ -1,0 +1,140 @@
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    font-family: "proxima-nova",sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: rgb(61, 146, 201);
+}
+a:hover,
+a:focus {
+    text-decoration: underline;
+}
+
+h3 {
+    font-weight: 100;
+}
+
+/* LAYOUT CSS */
+.pure-img-responsive {
+    max-width: 75%;
+    height: auto;
+}
+
+#layout {
+    padding: 0;
+}
+
+.header {
+    text-align: center;
+    top: auto;
+    margin: 3em auto;
+}
+
+.sidebar {
+    background: rgb(61, 79, 93);
+    color: #fff;
+}
+
+.brisket-title,
+.brisket-timer {
+    margin: 0;
+}
+.brisket-title {
+    font-size: 3em;
+    text-transform: uppercase;
+}
+.brisket-timer {
+    font-family: "sax-mono";
+    font-size: 3.75em;
+    font-weight: 300;
+    color: rgb(176, 202, 219);
+}
+#brisket-timer-toggle {
+    text-transform: uppercase;
+    font-size: 1.1em;
+}
+.nav-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.nav-item {
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+.nav-item button {
+    background: transparent;
+    border: 2px solid rgb(176, 202, 219);
+    color: #fff;
+    margin-top: 1em;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 85%;
+}
+.nav-item button:hover,
+.nav-item button:focus {
+    border: 2px solid rgb(61, 146, 201);
+    text-decoration: none;
+}
+
+.content-subhead {
+    text-transform: uppercase;
+    color: #aaa;
+    border-bottom: 1px solid #eee;
+    padding: 0.4em 0;
+    font-size: 80%;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+}
+
+.content {
+    padding: 2em 1em 0;
+}
+
+.temperature-box {
+    font-size: 9em;
+}
+
+.temperature-box > span {
+    font-family: "sax-mono";
+}
+
+.temperature-box > sup {
+    font-size: 66%;
+}
+
+.temperature-track {
+    font-family: "sax-mono";
+    font-size: 1.75em;
+}
+
+.temperature-track.hotter {
+    color: #EF1D00;
+}
+
+.temperature-track {
+    color: #00A1E9;
+}
+
+@media (min-width: 48em) {
+    .content {
+        padding: 2em 3em 0;
+        margin-left: 25%;
+    }
+
+    .header {
+        margin: 80% 2em 0;
+        text-align: right;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+    }
+}

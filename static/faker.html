@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brisket Faker</title>
+
+</head>
+<body>
+<p id='info'></p>
+</body>
+<script type="text/javascript">
+  // Websocket Action
+  var ws       = new WebSocket('ws://' + window.location.host + '/publish');
+  ws.onopen    = function()  { 
+    // This won't be right over time, but it's good enough of a test
+    var rand0 = 100;
+    var rand1 = 200;
+
+    window.setInterval(function(){
+      rand0 = rand0 + Math.floor(Math.random() * (3 - -3)) - 1;
+      rand1 = rand1 + Math.floor(Math.random() * (3 - -3)) - 1;
+      
+      console.log(JSON.stringify({"probe0": rand0, "probe1": rand1}));
+      ws.send(JSON.stringify({"probe0": rand0, "probe1": rand1}));
+    }, 5000);
+  };
+  ws.onclose   = function()  {  };
+  ws.onmessage = function(m) {  };
+</script>
+</html>

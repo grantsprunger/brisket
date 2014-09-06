@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brisket</title>
+
+  <!-- Style Sheets -->
+  <link rel="stylesheet" href="/css/pure-min.css">
+  <link rel="stylesheet" href="/css/grids-responsive-min.css">
+  <link rel="stylesheet" href="/css/app.css">
+
+  <!-- Fonts -->
+  <script type="text/javascript" src="//use.typekit.net/njq1qry.js"></script>
+  <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+
+  <!-- Javascripts -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script type="text/javascript" src="/js/tock.js"></script>
+  <script type="text/javascript" src="/js/chart.min.js"></script>
+
+</head>
+<body>
+<div id="layout" class="pure-g">
+    <div class="sidebar pure-u-1 pure-u-md-1-4">
+        <div class="header">
+            <h1 class="brisket-title"><img alt="Brisket Cow Logo"
+                                         class="pure-img-responsive"
+                                         src="/img/brisket-logo.png">Brisket</h1>
+            <h2 class="brisket-timer" id="brisket-timer">00:00</h2>
+
+            <nav class="nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <button class="pure-button" id="brisket-timer-toggle">Start</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <div class="content pure-u-1 pure-u-md-3-4">
+      <div class="information pure-g">
+        <div class="pure-u-1 pure-u-md-1-2">
+            <div class="l-box">
+                <h3 class="information-head">Probe Temperature <span id="direct-temperature-track" class="temperature-track">&darr;</span></h3>
+                <div class="temperature-box"><span id="direct-temperature">999</span><sup>&deg;<span id="direct-temperature-unit">f</span></sup></div>
+            </div>
+        </div>
+
+        <div class="pure-u-1 pure-u-md-1-2">
+            <div class="l-box">
+                <h3 class="information-head">Ambient Temperature <span id="ambient-temperature-track" class="temperature-track">&darr;</span></h3>
+                <div class="temperature-box"><span id="ambient-temperature">999</span><sup>&deg;<span id="ambient-temperature-unit">f</span></sup></div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+    <h3 class="information-head">Past 30 minutes <span>&deg;f</span></h3>
+    <canvas id="temperature-chart" height="400" width="800"></canvas>
+    </div>
+
+  </div>
+</div>
+
+<script>  
+  var lineChartData = {
+      labels: ["30","29","28","27","26","25","24","23","22","21","20","19","18","17","16","15","14","13","12","11","10","9","8","7","6","5","4","3","2","1","0"],
+      datasets: [
+          {
+              label: "Direct Temperature",
+              fillColor: "rgba(220,220,220,0.7)",
+              strokeColor: "rgba(220,220,220,1)",
+              pointColor: "rgba(220,220,220,1)",
+              pointStrokeColor: "#fff",
+              pointHighlightFill: "#fff",
+              pointHighlightStroke: "rgba(220,220,220,1)",
+              data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+          },
+          {
+              label: "Ambient Temperature",
+              fillColor: "rgba(151,187,205,0.2)",
+              strokeColor: "rgba(151,187,205,1)",
+              pointColor: "rgba(151,187,205,1)",
+              pointStrokeColor: "#fff",
+              pointHighlightFill: "#fff",
+              pointHighlightStroke: "rgba(151,187,205,1)",
+              data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+          }
+      ]
+  };
+
+  var options = {
+    responsive: true,
+    pointDot: false
+  };
+
+  var ctx = document.getElementById("temperature-chart").getContext("2d");
+  var myLineChart = new Chart(ctx).Line(lineChartData, options);
+</script>
+
+<script type="text/javascript">
+  var chartTimer = new Tock({
+    countdown: false,
+    interval: 10000,
+    callback: function () {
+      console.log("Chart Timer");
+      //Fetch the chart data
+      $.get( "/chart", function( data ) {
+        if (data)
+        {
+          for (index = 0; index < data.chartx.length; ++index) {
+            var xindex = data.chartx[index];
+            
+            if (myLineChart.datasets[0].points[xindex].value != data.probe0y[index])
+            {
+              myLineChart.datasets[0].points[xindex].value = data.probe0y[index];
+            }
+
+            if (myLineChart.datasets[1].points[xindex].value != data.probe1y[index])
+            {
+              myLineChart.datasets[1].points[xindex].value = data.probe1y[index];
+            }            
+          }
+
+          myLineChart.update();
+        }
+      });
+    },
+    complete: function () {
+    }
+  });
+  chartTimer.start();
+</script>
+
+<script type="text/javascript">
+  var trendTimer = new Tock({
+    countdown: false,
+    interval: 30000,
+    callback: function () {
+      console.log("Trend Timer");
+      //Fetch the chart data
+      $.get( "/trend", function( data ) {
+        if (data)
+        {
+          if (data.probe0 == 'up')
+          {
+            $('#direct-temperature-track').html('&uarr;');
+            $('#direct-temperature-track').addClass('hotter');
+          } else {
+            $('#direct-temperature-track').html('&darr;');
+            $('#direct-temperature-track').removeClass('hotter');
+          }
+
+          if (data.probe1 == 'up')
+          {
+            $('#ambient-temperature-track').html('&uarr;');
+            $('#ambient-temperature-track').addClass('hotter');
+          } else {
+            $('#ambient-temperature-track').html('&darr;');
+            $('#ambient-temperature-track').removeClass('hotter');
+          }
+        }
+      });
+    },
+    complete: function () {
+    }
+  });
+  trendTimer.start();
+</script>
+
+<script type="text/javascript">
+var timerstatus = false;
+var mastertime = false;
+
+var timer = new Tock({
+  countdown: false,
+  interval: 1000,
+  callback: function () {
+    var txt = timer.msToTime(timer.lap());
+    $('#brisket-timer').text(txt);
+    $.post( "/cooking_time", {'cooking_time': txt}, function( data ) {
+    });
+  },
+  complete: function () {
+  }
+});
+
+$('#brisket-timer-toggle').on('click', function() {
+  if (timerstatus == false)
+  {
+    $.post( "/cooking", {'cooking': 'true'}, function( data ) {
+      timer.start();
+      mastertime = true;
+    });
+  }
+
+  if (timerstatus == true)
+  {
+    $.post( "/cooking", {'cooking': 'false'}, function( data ) {
+    });
+  }
+});
+</script>
+</body>
+<script type="text/javascript">
+  // Websocket Action
+  var ws       = new WebSocket('ws://' + window.location.host + window.location.pathname);
+  ws.onopen    = function()  {  };
+  ws.onclose   = function()  {  };
+  ws.onmessage = function(m) {
+    var data = JSON.parse(m.data);
+
+    console.log(m);
+    console.log(data);
+
+    // Temperature Update
+    if (data.hasOwnProperty('temperature_update'))
+    {
+      $('#direct-temperature').text(data.temperature_update.probe0);
+      $('#ambient-temperature').text(data.temperature_update.probe1);
+    }
+
+    // Cooking update
+    if (data.hasOwnProperty('cooking'))
+    {
+      console.log(data.cooking);
+      // Status Control
+      if (data.cooking == false)
+      {
+        timerstatus = false;
+        $('#brisket-timer-toggle').text("Start");
+          if (mastertime == true)
+          {
+            timer.stop();
+            mastertime = false;
+          }
+      } else {
+        timerstatus = true;
+        $('#brisket-timer-toggle').text("Stop");
+      }
+    }
+
+    // Time updates
+    if (data.hasOwnProperty('cooking_time'))
+    {
+      $('#brisket-timer').text(data.cooking_time);
+    }
+
+  };
+</script>
+</html>
