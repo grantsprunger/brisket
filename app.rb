@@ -16,20 +16,20 @@ set :bind, '0.0.0.0'
 ActiveRecord::Base.establish_connection(
   :adapter  => "mysql2",
   :host     => "127.0.0.1",
-  :username => "sql",
-  :password => "sql",
-  :database => "brisket"
+  :username => ENV['BRISKET_DATABSE_USER'],
+  :password => ENV['BRISKET_DATABSE_PASSWORD'],
+  :database => ENV['BRISKET_DATABSE']
 )
 
-class BrisketEvent < ActiveRecord::Base
-end
+BrisketEvent = Class.new(ActiveRecord::Base)
 
-#close the connection
 after do
   ActiveRecord::Base.connection.close
 end
 
 get '/' do
+  # Responds to html and websocket requests
+
   if !request.websocket?
     erb :index
   else
@@ -37,6 +37,7 @@ get '/' do
       ws.onopen do
         ws_obj = {:websocket => ws, :publisher => false}
         settings.sockets << ws_obj
+        
         # Tell the client if other clients are already cooking
         ws_obj[:websocket].send(JSON.generate({:cooking => settings.cooking}))
       end
@@ -64,7 +65,6 @@ post '/cooking' do
   if params[:cooking] == 'true'
     settings.cooking = true
     BrisketEvent.create({:event => 'cooking', :probe0 => 0, :probe1 => 0})
-  
   elsif params[:cooking] == 'false'
     settings.cooking = false
   end
@@ -79,6 +79,8 @@ post '/cooking' do
 end
 
 post '/cooking_time' do
+  # Receives cooking time update from javascript frontened, publishes update to websocket
+
   if params[:cooking_time]
     EM.next_tick {
       settings.sockets.each_with_index do |s, i| 
@@ -91,96 +93,86 @@ post '/cooking_time' do
 end
 
 get '/trend' do
-  #Return json of probe0 probe1 trend from mysql
+  # Returns JSON past 120 second temperature trend for probes
+  # {"probe0": "up", "probe1": "down"}
+
   content_type :json
   
-  sql = "SELECT  30 - TIMESTAMPDIFF(SECOND, created_at, NOW()) as idx, AVG(probe0) as probe0, AVG(probe1) as probe1 FROM brisket_events WHERE event = 'temperature' && created_at > NOW() - INTERVAL 30 SECOND GROUP BY idx ORDER BY idx ASC;"
+  sql = 'SELECT 120 - TIMESTAMPDIFF(SECOND, created_at, NOW()) as idx, AVG(probe0) as probe0, AVG(probe1) as probe1 ' \
+        'FROM brisket_events ' \
+        'WHERE event = \'temperature\' AND created_at > NOW() - INTERVAL 120 SECOND ' \
+        'GROUP BY idx ' \
+        'ORDER BY idx ASC;'
+
   results = BrisketEvent.find_by_sql(sql)
-  
+
   # probe 0 linear
-  probe0x = []
-  probe0y = []
+  probe0_x = []
+  probe0_y = []
 
   # probe 1 linear
-  probe1x = []
-  probe1y = []
+  probe1_x = []
+  probe1_y = []
 
   # Shove the time series into an array
   results.each do |t|
+    probe0_x << t[:idx]
+    probe0_y << t[:probe0]
 
-    probe0x << t[:idx]
-    probe0y << t[:probe0]
-
-    probe1x << t[:idx]
-    probe1y << t[:probe1]
-    
+    probe1_x << t[:idx]
+    probe1_y << t[:probe1]
   end
 
-  #Setup linear regression
-  probelinear0 = Regression::Linear.new(probe0x, probe0y)
-  probelinear1 = Regression::Linear.new(probe1x, probe1y)
+  # It's more efficient for ruby to do the linear regression than mysql
+  probe0_regression = Regression::Linear.new(probe0_x, probe0_y)
+  probe1_regression = Regression::Linear.new(probe1_x, probe1_y)
 
-  {:probe0 => probelinear0.slope > 0 || nil ? 'up' : 'down', :probe1 => probelinear1.slope > 0 || nil ? 'up' : 'down'}.to_json
+  {:probe0 => probe0_regression.slope > 0 || nil ? 'up' : 'down', :probe1 => probe1_regression.slope > 0 || nil ? 'up' : 'down'}.to_json
 end
 
 get '/chart' do
-  #Return json of probe0 probe1 temperature data
+  # Return JSON past 30 minutes of average temperatures
+  # {"chartx": [30,29], "probe0": [55,56], "probe1": [77,78]}
+
   content_type :json
-  sql = "SELECT 31 - TIMESTAMPDIFF(MINUTE, created_at, NOW()) - 1 as idx, AVG(probe0) as probe0, AVG(probe1) as probe1 FROM brisket_events WHERE event = 'temperature' && created_at > NOW() - INTERVAL 31 MINUTE GROUP BY idx ORDER BY idx ASC;"
+
+  sql = 'SELECT 31 - TIMESTAMPDIFF(MINUTE, created_at, NOW()) - 1 as idx, AVG(probe0) as probe0, AVG(probe1) as probe1 ' \
+        'FROM brisket_events ' \
+        'WHERE event = \'temperature\' AND created_at > NOW() - INTERVAL 31 MINUTE ' \
+        'GROUP BY idx ' \
+        'ORDER BY idx ASC;'
+  
   results = BrisketEvent.find_by_sql(sql)
 
-  # cart arrays
-  chartx = []
-  probe0y = []
-  probe1y = []
+  # Chart Arrays
+  chart_x  = []
+  probe0_y = []
+  probe1_y = []
 
-  # Shove the time series into an array
   results.each do |t|
-
-    chartx  << t[:idx].to_i
-    probe0y << t[:probe0].to_f
-    probe1y << t[:probe1].to_f
-    
+    chart_x  << t[:idx].to_i
+    probe0_y << t[:probe0].to_f
+    probe1_y << t[:probe1].to_f
   end
 
-  {:chartx => chartx, :probe0y => probe0y, :probe1y => probe1y}.to_json
-
+  {:chartx => chart_x, :probe0y => probe0_y, :probe1y => probe1_y}.to_json
 end
 
-get '/publish' do
-  if !request.websocket?
-    status 404
-  else
-    request.websocket do |ws|
-      ws.onopen do
-        settings.sockets << {:websocket => ws, :publisher => true}
-      end
-      ws.onmessage do |msg|
-        temps = JSON.parse(msg, {:symbolize_names => true})
+post '/publish' do
+  # Receives temperature update from the Arduino
 
-        if temps[:probe0] && temps[:probe1]
-          #Convert from mv to C or F
+  if params[:probe0] && params[:probe1]
 
-          #Save to DB
-          BrisketEvent.create({:event => 'temperature', :probe0 => temps[:probe0], :probe1 => temps[:probe1]})
+    # Save the temperature event to the database
+    BrisketEvent.create({:event => 'temperature', :probe0 => params[:probe0], :probe1 => params[:probe1]})
 
-          #Send to socket
-          EM.next_tick {
-            settings.sockets.each_with_index do |s, i| 
-              if s[:publisher] == false
-                s[:websocket].send(JSON.generate({:temperature_update => temps}))
-              end
-            end 
-          }
+    EM.next_tick {
+      settings.sockets.each_with_index do |s, i| 
+        # Don't send the temp update back to the Arduino only to web clients
+        if s[:publisher] == false
+          s[:websocket].send(JSON.generate({:temperature_update => {:probe0 => params[:probe0], :probe1 => params[:probe1]}}))
         end
-      end
-      ws.onclose do
-        settings.sockets.each_with_index  do |s, i|
-          if ws.equal? s[:websocket]
-            settings.sockets.delete_at(i)
-          end
-        end
-      end
-    end
+      end 
+    }
   end
 end
