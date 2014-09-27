@@ -1,11 +1,11 @@
-# Brisket
-## A BBQ and Kitchen monitoring backend/frontend
+### Brisket
+#### A BBQ and Kitchen monitoring backend/frontend
 ***
 
 ![Brisket BBQ Monitor](http://static.grantsprunger.com/brisket.jpg)
 
-# How to Use
-## Brisket uses Sinatra and mySQL
+### How to Use
+#### Brisket uses Sinatra and mySQL
 ***
 
   ```bash
@@ -26,4 +26,4 @@
 
 You can send temperatures via a post request to /publish with probe0 and probe1 parameters.
 
-You can also use this Arduino sketch 
+You can also use this Arduino sketch https://github.com/grantsprunger/brisket-arduino
